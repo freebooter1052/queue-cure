@@ -1,0 +1,170 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-outline-variant: #bcc9c6;
+  --color-surface-container-lowest: #ffffff;
+  --color-tertiary: #595c5e;
+  --color-secondary-fixed: #dbe1ff;
+  --color-primary-fixed: #89f5e7;
+  --color-on-primary-fixed: #00201d;
+  --color-surface: #faf8ff;
+  --color-surface-container-highest: #dae2fd;
+  --color-error: #ba1a1a;
+  --color-primary-fixed-dim: #6bd8cb;
+  --color-on-secondary-fixed: #00174b;
+  --color-tertiary-fixed: #e0e3e5;
+  --color-on-primary: #ffffff;
+  --color-on-surface: #131b2e;
+  --color-surface-container-high: #e2e7ff;
+  --color-tertiary-container: #727577;
+  --color-inverse-on-surface: #eef0ff;
+  --color-on-background: #131b2e;
+  --color-on-secondary-fixed-variant: #003ea8;
+  --color-on-surface-variant: #3d4947;
+  --color-inverse-surface: #283044;
+  --color-tertiary-fixed-dim: #c4c7c9;
+  --color-on-primary-container: #f4fffc;
+  --color-on-secondary-container: #fefcff;
+  --color-on-secondary: #ffffff;
+  --color-on-error-container: #93000a;
+  --color-secondary-container: #316bf3;
+  --color-inverse-primary: #6bd8cb;
+  --color-background: #faf8ff;
+  --color-secondary-fixed-dim: #b4c5ff;
+  --color-surface-container-low: #f2f3ff;
+  --color-primary: #00685f;
+  --color-on-tertiary-container: #fbfdff;
+  --color-on-error: #ffffff;
+  --color-on-tertiary-fixed: #191c1e;
+  --color-outline: #6d7a77;
+  --color-secondary: #0051d5;
+  --color-surface-container: #eaedff;
+  --color-on-tertiary: #ffffff;
+  --color-surface-bright: #faf8ff;
+  --color-primary-container: #008378;
+  --color-surface-dim: #d2d9f4;
+  --color-on-primary-fixed-variant: #005049;
+  --color-surface-tint: #006a61;
+  --color-on-tertiary-fixed-variant: #444749;
+  --color-surface-variant: #dae2fd;
+  --color-error-container: #ffdad6;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+
+  --radius-DEFAULT: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+  
+  --spacing-base: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 16px;
+  --spacing-md: 24px;
+  --spacing-lg: 48px;
+  --spacing-xl: 64px;
+  --spacing-gutter: 24px;
+  --spacing-margin-mobile: 16px;
+  --spacing-margin-desktop: 40px;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #faf8ff;
+  color: #131B2E;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+}
+
+.card-clinical {
+  background-color: #FFFFFF;
+  border: 1px solid #f1f5f9; /* Slate-100 */
+  border-radius: 1rem;
+  padding: 24px;
+  transition: all 0.2s ease;
+}
+
+.card-clinical:hover {
+  border-color: #bcc9c6; /* outline-variant */
+}
+
+.bg-medical-teal {
+  background-color: #00685f; /* primary */
+}
+
+/* Typography styles based on design.md */
+.font-headline-lg { font-family: 'Inter', sans-serif; }
+.text-headline-lg {
+  font-size: 32px;
+  line-height: 40px;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+.font-headline-lg-mobile { font-family: 'Inter', sans-serif; }
+.text-headline-lg-mobile {
+  font-size: 24px;
+  line-height: 32px;
+  letter-spacing: -0.01em;
+  font-weight: 700;
+}
+
+.font-headline-md { font-family: 'Inter', sans-serif; }
+.text-headline-md {
+  font-size: 24px;
+  line-height: 32px;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+.font-headline-sm { font-family: 'Inter', sans-serif; }
+.text-headline-sm {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+}
+
+.font-body-lg { font-family: 'Inter', sans-serif; }
+.text-body-lg {
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 400;
+}
+
+.font-body-md { font-family: 'Inter', sans-serif; }
+.text-body-md {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+.font-body-sm { font-family: 'Inter', sans-serif; }
+.text-body-sm {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.font-label-md { font-family: 'Inter', sans-serif; }
+.text-label-md {
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.font-label-sm { font-family: 'Inter', sans-serif; }
+.text-label-sm {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+}
