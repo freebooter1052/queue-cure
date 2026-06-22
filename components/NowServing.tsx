@@ -23,14 +23,16 @@ export default function NowServing({ currentPatient, onCallNext, onSkip, isLoadi
   // Update elapsed time every minute
   useEffect(() => {
     if (!currentPatient?.called_at) {
-      setElapsed('');
-      return;
+      const timer = setTimeout(() => setElapsed(''), 0);
+      return () => clearTimeout(timer);
     }
-    setElapsed(formatElapsed(currentPatient.called_at));
-    const interval = setInterval(() => {
-      setElapsed(formatElapsed(currentPatient.called_at));
-    }, 60000);
-    return () => clearInterval(interval);
+    const updateElapsed = () => setElapsed(formatElapsed(currentPatient.called_at));
+    const timer = setTimeout(updateElapsed, 0); // initial update avoiding sync setState
+    const interval = setInterval(updateElapsed, 60000);
+    return () => {
+        clearTimeout(timer);
+        clearInterval(interval);
+    };
   }, [currentPatient?.called_at]);
 
   return (

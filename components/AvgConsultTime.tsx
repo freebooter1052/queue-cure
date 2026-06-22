@@ -7,6 +7,7 @@ interface AvgConsultTimeProps {
   onChange: (newValue: number) => Promise<void>;
   onCallNext: () => Promise<void>;
   currentPatientId: string | null;
+  currentPatientCalledAt: string | null;
   hasWaitingPatients: boolean;
 }
 
@@ -15,6 +16,7 @@ export default function AvgConsultTime({
   onChange,
   onCallNext,
   currentPatientId,
+  currentPatientCalledAt,
   hasWaitingPatients,
 }: AvgConsultTimeProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -31,16 +33,6 @@ export default function AvgConsultTime({
     setInputValue(value.toString());
   }
 
-  // Reset elapsed time when the active patient changes
-  const [prevPatientId, setPrevPatientId] = useState(currentPatientId);
-  if (currentPatientId !== prevPatientId) {
-    setPrevPatientId(currentPatientId);
-    setElapsedTime(0);
-    if (!currentPatientId && !hasWaitingPatients) {
-      setIsTimerRunning(false);
-    }
-  }
-
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
@@ -48,16 +40,45 @@ export default function AvgConsultTime({
     }
   }, [isEditing]);
 
-  // Stopwatch interval effect
+  // Keep timer running when started manually without a patient
   useEffect(() => {
-    if (!isTimerRunning) return;
+    if (isTimerRunning && !currentPatientId && hasWaitingPatients) {
+        const interval = setInterval(() => {
+          setElapsedTime((prev) => prev + 1);
+        }, 1000);
+        return () => clearInterval(interval);
+    }
+  }, [isTimerRunning, currentPatientId, hasWaitingPatients]);
 
-    const interval = setInterval(() => {
-      setElapsedTime((prev) => prev + 1);
-    }, 1000);
+  // Sync elapsed time based on actual called_at instead of starting from 0
+  useEffect(() => {
+    if (currentPatientId && currentPatientCalledAt) {
+      let active = true;
 
-    return () => clearInterval(interval);
-  }, [isTimerRunning]);
+      const updateElapsedTime = () => {
+         if (!active) return;
+         const currentDiffMs = Date.now() - new Date(currentPatientCalledAt).getTime();
+         setElapsedTime(Math.floor(currentDiffMs / 1000));
+         setIsTimerRunning(true);
+      };
+
+      updateElapsedTime();
+      const interval = setInterval(updateElapsedTime, 1000);
+
+      return () => {
+         active = false;
+         clearInterval(interval);
+      };
+    } else if (!currentPatientId) {
+      // To avoid synchronous setState in effect causing cascading renders
+      // we use setTimeout here to defer it out of current execution frame.
+      const timer = setTimeout(() => {
+          setElapsedTime(0);
+          setIsTimerRunning(false);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [currentPatientId, currentPatientCalledAt]);
 
   const handleSave = async () => {
     const num = parseInt(inputValue, 10);
