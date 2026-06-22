@@ -22,20 +22,20 @@ export default function AvgConsultTime({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(value * 60);
+  const [elapsedTime, setElapsedTime] = useState(0);
 
-  // Sync state during render to avoid synchronous setState inside useEffect
+  // Sync input value during render to avoid useEffect set state issues
   const [prevValue, setPrevValue] = useState(value);
   if (value !== prevValue) {
     setPrevValue(value);
-    setTimeLeft(value * 60);
     setInputValue(value.toString());
   }
 
+  // Reset elapsed time when the active patient changes
   const [prevPatientId, setPrevPatientId] = useState(currentPatientId);
   if (currentPatientId !== prevPatientId) {
     setPrevPatientId(currentPatientId);
-    setTimeLeft(value * 60);
+    setElapsedTime(0);
     if (!currentPatientId && !hasWaitingPatients) {
       setIsTimerRunning(false);
     }
@@ -48,31 +48,16 @@ export default function AvgConsultTime({
     }
   }, [isEditing]);
 
-  // Countdown timer interval effect
+  // Stopwatch interval effect
   useEffect(() => {
     if (!isTimerRunning) return;
 
     const interval = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+      setElapsedTime((prev) => prev + 1);
     }, 1000);
 
     return () => clearInterval(interval);
   }, [isTimerRunning]);
-
-  // Handle countdown complete: call next patient automatically
-  useEffect(() => {
-    if (timeLeft === 0 && isTimerRunning) {
-      const timer = setTimeout(async () => {
-        try {
-          setTimeLeft(value * 60);
-          await onCallNext();
-        } catch (err) {
-          console.error('Error calling next patient from timer:', err);
-        }
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [timeLeft, isTimerRunning, value, onCallNext]);
 
   const handleSave = async () => {
     const num = parseInt(inputValue, 10);
@@ -131,6 +116,8 @@ export default function AvgConsultTime({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const isExceeded = elapsedTime > value * 60;
+
   return (
     <div className="flex items-center gap-xs bg-surface-container-low p-2 px-4 rounded-xl border border-slate-100 select-none">
       <span className="font-label-sm text-on-surface-variant">Avg. Consultation Time:</span>
@@ -180,17 +167,19 @@ export default function AvgConsultTime({
       {/* Divider */}
       <div className="h-5 w-px bg-slate-200 mx-2" />
 
-      {/* Timer Widget */}
+      {/* Stopwatch Widget */}
       <div className="flex items-center gap-2">
         <button
           onClick={handleToggleTimer}
           disabled={!currentPatientId && !hasWaitingPatients}
           className={`flex items-center justify-center p-1.5 rounded-full transition-all cursor-pointer ${
             isTimerRunning 
-              ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' 
+              ? isExceeded 
+                ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' 
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed'
           }`}
-          title={isTimerRunning ? 'Pause Consultation Timer' : 'Start Consultation Timer'}
+          title={isTimerRunning ? 'Pause Consultation Stopwatch' : 'Start Consultation Stopwatch'}
         >
           <span className="material-symbols-outlined text-base">
             {isTimerRunning ? 'pause' : 'play_arrow'}
@@ -200,14 +189,20 @@ export default function AvgConsultTime({
         <div className="flex items-center gap-1.5 min-w-[50px]">
           {isTimerRunning && (
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                isExceeded ? 'bg-red-400' : 'bg-emerald-400'
+              }`}></span>
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                isExceeded ? 'bg-red-500' : 'bg-emerald-500'
+              }`}></span>
             </span>
           )}
           <span className={`font-mono text-sm font-bold transition-colors ${
-            isTimerRunning ? 'text-emerald-600' : 'text-[#3d4947] opacity-80'
+            isTimerRunning 
+              ? isExceeded ? 'text-red-600 animate-pulse' : 'text-emerald-600' 
+              : 'text-[#3d4947] opacity-80'
           }`}>
-            {formatTime(timeLeft)}
+            {formatTime(elapsedTime)}
           </span>
         </div>
       </div>

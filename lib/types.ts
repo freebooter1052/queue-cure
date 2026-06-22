@@ -14,6 +14,14 @@ export interface Patient {
   completed_at: string | null;
 }
 
+export interface QueueNotification {
+  id: string;
+  type: 'info' | 'warning' | 'alert';
+  message: string;
+  timestamp: string;
+  read: boolean;
+}
+
 export interface Settings {
   key: string;
   value: string;
