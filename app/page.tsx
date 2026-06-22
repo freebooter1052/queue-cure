@@ -131,7 +131,13 @@ export default function Dashboard() {
 
         {/* Header Actions Area */}
         <div className="flex justify-end items-center">
-          <AvgConsultTime value={avgConsultTime} onChange={handleAvgConsultChange} />
+          <AvgConsultTime
+            value={avgConsultTime}
+            onChange={handleAvgConsultChange}
+            onCallNext={handleCallNext}
+            currentPatientId={currentPatient?.id || null}
+            hasWaitingPatients={waitingPatients.length > 0}
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-[24px]">
