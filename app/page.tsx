@@ -25,8 +25,6 @@ export default function Dashboard() {
 
   const [notifications, setNotifications] = useState<QueueNotification[]>([]);
   const alertedKeysRef = useRef<Set<string>>(new Set());
-  const seenPatientIdsRef = useRef<Set<string>>(new Set());
-  const isInitialLoadRef = useRef(true);
 
   const addNotification = useCallback((type: 'info' | 'warning' | 'alert', message: string, key?: string) => {
     if (key) {
@@ -91,26 +89,6 @@ export default function Dashboard() {
       channel.unsubscribe();
     };
   }, [loadPatients, loadSettings]);
-
-  // Monitor patient additions for new check-in notifications
-  useEffect(() => {
-    if (patients.length > 0) {
-      if (isInitialLoadRef.current) {
-        patients.forEach((p) => seenPatientIdsRef.current.add(p.id));
-        isInitialLoadRef.current = false;
-      } else {
-        patients.forEach((p) => {
-          if (!seenPatientIdsRef.current.has(p.id)) {
-            seenPatientIdsRef.current.add(p.id);
-            addNotification('info', `New patient registered: T-${p.token_number} (${p.patient_name})`);
-          }
-        });
-      }
-    } else {
-      seenPatientIdsRef.current.clear();
-      isInitialLoadRef.current = false;
-    }
-  }, [patients, addNotification]);
 
   // Periodic wait time and session overrun warnings
   useEffect(() => {
