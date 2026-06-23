@@ -5,28 +5,55 @@ import type { Patient } from '@/lib/types';
 interface QueueListProps {
   patients: Patient[];
   onRemovePatient: (patientId: string) => void;
+  /** Average consultation time in minutes (from settings) */
+  avgConsultMins: number;
+  /** called_at timestamp of the patient currently being served (null if nobody serving) */
+  servingCalledAt: string | null;
 }
 
-export default function QueueList({ patients, onRemovePatient }: QueueListProps) {
+/**
+ * Compute estimated wait for the token at `idx` (0-indexed) in the waiting list.
+ * Formula: sessionRemainingMins + idx × avgConsultMins
+ *
+ * For the first patient (idx=0)  → just the remaining time of the current session.
+ * For the second patient (idx=1) → remaining session + 1 full consult slot.
+ * ...and so on.
+ */
+function computeTokenEstWait(
+  idx: number,
+  avgConsultMins: number,
+  servingCalledAt: string | null,
+  nowMs: number,
+): number {
+  if (!servingCalledAt) {
+    return idx * avgConsultMins;
+  }
+  const sessionElapsedMins = (nowMs - new Date(servingCalledAt).getTime()) / 60_000;
+  const elapsed = Math.max(0, sessionElapsedMins);
+  const sessionRemainingMins = avgConsultMins - (elapsed % avgConsultMins);
+  return Math.round(sessionRemainingMins + idx * avgConsultMins);
+}
+
+export default function QueueList({
+  patients,
+  onRemovePatient,
+  avgConsultMins,
+  servingCalledAt,
+}: QueueListProps) {
   const [showAll, setShowAll] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
+  // Ticking clock — update every 1s for real-time responsiveness and sync
   const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setNow(Date.now()), 0);
-    const interval = setInterval(() => setNow(Date.now()), 60000);
+    const interval = setInterval(() => setNow(Date.now()), 1_000);
     return () => {
-        clearTimeout(timer);
-        clearInterval(interval);
+      clearTimeout(timer);
+      clearInterval(interval);
     };
   }, []);
-
-  const getWaitTime = (createdAt: string) => {
-    if (!now) return 0;
-    const diffMs = now - new Date(createdAt).getTime();
-    return Math.floor(diffMs / 60000);
-  };
 
   const handleRemove = async (patientId: string) => {
     setRemovingId(patientId);
@@ -58,11 +85,28 @@ export default function QueueList({ patients, onRemovePatient }: QueueListProps)
         </div>
       ) : (
         <>
+          {/* Column header */}
+          <div className="flex items-center justify-between px-[16px] mb-[8px]">
+            <div className="flex items-center gap-[20px]">
+              <span className="text-[11px] font-bold text-[#bcc9c6] uppercase tracking-widest w-4" />
+              <span className="text-[11px] font-bold text-[#bcc9c6] uppercase tracking-widest w-14">Token</span>
+              <span className="text-[11px] font-bold text-[#bcc9c6] uppercase tracking-widest">Name</span>
+            </div>
+            <span className="text-[11px] font-bold text-[#bcc9c6] uppercase tracking-widest">Est. Wait</span>
+          </div>
+
           <div className="space-y-[8px]">
             {displayedPatients.map((patient, index) => {
               const isFirst = index === 0;
               const isRemoving = removingId === patient.id;
-              const waitMins = getWaitTime(patient.created_at);
+
+              // Estimated wait time until this patient is called
+              const estWaitMins = now
+                ? computeTokenEstWait(index, avgConsultMins, servingCalledAt, now)
+                : null;
+
+              // Urgency colour: > 2× avg is concerning
+              const isUrgent = estWaitMins !== null && estWaitMins > avgConsultMins * 2;
 
               return (
                 <div
@@ -85,11 +129,29 @@ export default function QueueList({ patients, onRemovePatient }: QueueListProps)
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className={`text-[13px] font-normal text-[#3d4947] px-3 py-1 rounded-full border border-[#f1f5f9] ${
-                      isFirst ? 'bg-white' : 'bg-[#f8fafc]'
-                    } ${waitMins > 30 ? 'text-orange-500 border-orange-200 bg-orange-50' : ''}`}>
-                      {waitMins}m wait
-                    </span>
+                    {/* Estimated wait badge */}
+                    {estWaitMins !== null ? (
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span
+                          className={`text-[14px] font-black tabular-nums leading-tight ${
+                            isFirst
+                              ? 'text-[#00685f]'
+                              : isUrgent
+                              ? 'text-orange-500'
+                              : 'text-[#3d4947]'
+                          }`}
+                        >
+                          {estWaitMins <= 0 ? 'Now' : `~${estWaitMins}m`}
+                        </span>
+                        <span className="text-[10px] font-semibold text-[#bcc9c6] uppercase tracking-wider">
+                          est. wait
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-[13px] text-[#bcc9c6] px-3 py-1 rounded-full border border-[#f1f5f9] bg-[#f8fafc]">
+                        —
+                      </span>
+                    )}
 
                     {/* Remove button — visible on hover */}
                     <button

@@ -163,6 +163,11 @@ export function subscribeToQueue(onChangeCallback: () => void) {
       { event: '*', schema: 'public', table: 'patients' },
       () => onChangeCallback()
     )
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'settings', filter: 'key=eq.avg_consultation_time' },
+      () => onChangeCallback()
+    )
     .subscribe();
 
   return channel;

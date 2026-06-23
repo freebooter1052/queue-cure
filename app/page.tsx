@@ -83,6 +83,7 @@ export default function Dashboard() {
     // Subscribe to realtime queue changes
     const channel = subscribeToQueue(() => {
       loadPatients();
+      loadSettings();
     });
 
     return () => {
@@ -240,6 +241,8 @@ export default function Dashboard() {
             <QueueList
               patients={waitingPatients}
               onRemovePatient={handleRemove}
+              avgConsultMins={avgConsultTime}
+              servingCalledAt={currentPatient?.called_at ?? null}
             />
           </div>
         </div>

@@ -1,152 +1,129 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
-import type { Patient } from '@/lib/types';
+// ============================================================
+// WaitingRoomDisplay — Patient-facing waiting room screen
+//
+// Consumes useDisplayQueue which handles:
+//   Task 3.1 — Supabase Realtime WebSocket subscription
+//   Task 3.2 — Dynamic metrics (position, token grid)
+//   Task 3.3 — Client-side wait time calculation engine
+// ============================================================
 
-// ── Mock data (replace with real data when backend is ready) ─────────────────
-const MOCK_SERVING: Patient = {
-  id: 'mock-serving',
-  patient_name: 'John A.',
-  token_number: 104,
-  status: 'serving',
-  created_at: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
-  called_at: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
-  completed_at: null,
-};
+import React from 'react';
+import { useDisplayQueue, type ConnectionStatus } from '@/hooks/useDisplayQueue';
 
-const MOCK_WAITING: Patient[] = [
-  {
-    id: 'mock-w1',
-    patient_name: 'Sarah B.',
-    token_number: 105,
-    status: 'waiting',
-    created_at: new Date(Date.now() - 22 * 60 * 1000).toISOString(),
-    called_at: null,
-    completed_at: null,
-  },
-  {
-    id: 'mock-w2',
-    patient_name: 'Carlos M.',
-    token_number: 106,
-    status: 'waiting',
-    created_at: new Date(Date.now() - 18 * 60 * 1000).toISOString(),
-    called_at: null,
-    completed_at: null,
-  },
-  {
-    id: 'mock-w3',
-    patient_name: 'Priya S.',
-    token_number: 107,
-    status: 'waiting',
-    created_at: new Date(Date.now() - 14 * 60 * 1000).toISOString(),
-    called_at: null,
-    completed_at: null,
-  },
-  {
-    id: 'mock-w4',
-    patient_name: 'Emily T.',
-    token_number: 108,
-    status: 'waiting',
-    created_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
-    called_at: null,
-    completed_at: null,
-  },
-];
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-// The token number of the current viewer — in real usage this would come from
-// the URL (e.g. /display?token=108) or localStorage after registration.
-const VIEWER_TOKEN = 108;
-const AVG_CONSULT_MINS = 7;
-// ──────────────────────────────────────────────────────────────────────────────
-
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString('en-US', {
+function formatTime(ms: number): string {
+  return new Date(ms).toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: true,
   });
 }
 
-/** Relative position suffix */
-function positionLabel(pos: number): string {
-  if (pos === 1) return 'Next Up';
-  if (pos === 2) return '2nd in Line';
-  if (pos === 3) return '3rd in Line';
-  return `${pos}th in Line`;
+/**
+ * Compute estimated wait for the token at `idx` (0-indexed) in the waiting list.
+ * Formula: sessionRemainingMins + idx × avgConsultMins
+ */
+function computeTokenWait(
+  idx: number,
+  sessionRemainingMins: number,
+  avgConsultMins: number,
+): number {
+  return Math.round(sessionRemainingMins + idx * avgConsultMins);
 }
 
+function ordinalSuffix(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
+}
+
+// ── Connection badge ──────────────────────────────────────────────────────────
+
+interface LiveBadgeProps {
+  status: ConnectionStatus;
+  pulseTick: boolean; // toggles every 3s for dot animation
+}
+
+function LiveBadge({ status, pulseTick }: LiveBadgeProps) {
+  const map: Record<ConnectionStatus, { label: string; dotColor: string; bg: string; text: string }> = {
+    connecting: { label: 'Connecting…', dotColor: '#6d7a77', bg: '#e2e8f0',  text: '#3d4947' },
+    live:       { label: 'Live Synced', dotColor: '#00685f', bg: '#e2e7ff',  text: '#00685f' },
+    stale:      { label: 'Reconnecting', dotColor: '#f59e0b', bg: '#fef3c7', text: '#b45309' },
+    error:      { label: 'Offline',      dotColor: '#ba1a1a', bg: '#ffdad6', text: '#93000a' },
+  };
+  const cfg = map[status];
+
+  return (
+    <div
+      className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-black/5"
+      style={{ background: cfg.bg }}
+    >
+      <span
+        className="w-2 h-2 rounded-full block transition-opacity duration-700"
+        style={{
+          background: cfg.dotColor,
+          opacity: status === 'live' ? (pulseTick ? 1 : 0.3) : 1,
+        }}
+      />
+      <span className="text-[12px] font-bold uppercase tracking-widest" style={{ color: cfg.text }}>
+        {cfg.label}
+      </span>
+    </div>
+  );
+}
+
+// ── Skeleton loader ───────────────────────────────────────────────────────────
+
+function Skeleton({ className = '' }: { className?: string }) {
+  return (
+    <div className={`animate-pulse rounded-2xl bg-[#e2e8f0] ${className}`} />
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
+
 export default function WaitingRoomDisplay() {
-  const [serving, setServing] = useState<Patient | null>(MOCK_SERVING);
-  const [waiting, setWaiting] = useState<Patient[]>(MOCK_WAITING);
-  const [now, setNow] = useState(Date.now());
-  const [isLive, setIsLive] = useState(true);
-  const [justCalled, setJustCalled] = useState(false);
-  const prevServingRef = useRef<number | null>(MOCK_SERVING.token_number);
+  const {
+    serving,
+    waiting,
+    avgConsultMins,
+    viewerToken,
+    viewerPosition,
+    isViewerServing,
+    isViewerCompleted,
+    patientsAhead,
+    estimatedWaitMins,
+    sessionElapsedMins,
+    sessionRemainingMins,
+    progressPct,
+    connectionStatus,
+    isLoading,
+    error,
+    now,
+    justCalled,
+  } = useDisplayQueue();
 
-  // Tick every second for the live clock & elapsed timer
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
+  // Pulse tick for live indicator dot (toggles via now % 6000)
+  const pulseTick = Math.floor(now / 3_000) % 2 === 0;
 
-  // Pulse "live" dot every 3s
-  useEffect(() => {
-    const interval = setInterval(() => setIsLive(v => !v), 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Detect when the serving token changes → animate
-  useEffect(() => {
-    const curr = serving?.token_number ?? null;
-    if (curr !== prevServingRef.current) {
-      setJustCalled(true);
-      const t = setTimeout(() => setJustCalled(false), 2000);
-      prevServingRef.current = curr;
-      return () => clearTimeout(t);
-    }
-  }, [serving]);
-
-  // ── Derived state ──────────────────────────────────────────────────────────
-  const currentTime = formatTime(new Date(now));
-
-  const viewerPosition =
-    waiting.findIndex(p => p.token_number === VIEWER_TOKEN) + 1; // 0 → not found
-
-  const isViewerServing = serving?.token_number === VIEWER_TOKEN;
-
-  // Estimated wait: position × avg consult time (remaining time of current session)
-  const sessionElapsedMins = serving?.called_at
-    ? (now - new Date(serving.called_at).getTime()) / 60000
-    : 0;
-  const sessionRemainingMins = Math.max(0, AVG_CONSULT_MINS - sessionElapsedMins);
-
-  const estimatedWaitMins =
-    viewerPosition > 0
-      ? Math.round(sessionRemainingMins + (viewerPosition - 1) * AVG_CONSULT_MINS)
-      : 0;
-
-  // Progress bar width for viewer's token
-  const totalTokens =
-    (serving ? 1 : 0) + waiting.length;
-  const posInFull = viewerPosition > 0
-    ? (serving ? 1 : 0) + viewerPosition
-    : totalTokens + 1;
-  const progressPct = totalTokens > 0
-    ? Math.round(((posInFull - 1) / totalTokens) * 100)
-    : 0;
-
-  // Show first 3 waiting patients in the queue sequence panel
+  // First 3 upcoming waiting patients for the Queue Sequence grid
   const upcomingSlice = waiting.slice(0, 3);
 
-  // Elapsed session time label
+  // Session elapsed label — only render after client clock is live (now > 0)
   const sessionElapsedLabel =
-    sessionElapsedMins >= 1
-      ? `${Math.floor(sessionElapsedMins)}m in session`
-      : 'just started';
+    now === 0
+      ? ''
+      : sessionElapsedMins < 1
+      ? 'just started'
+      : `${Math.floor(sessionElapsedMins)}m in session`;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC] font-sans text-[#131B2E]">
-      {/* ── Top Bar ────────────────────────────────────────────────────── */}
-      <header className="w-full flex items-center justify-between px-8 py-4 bg-white border-b border-[#f1f5f9]">
+
+      {/* ── Top Bar ─────────────────────────────────────────────────────── */}
+      <header className="w-full flex items-center justify-between px-8 py-4 bg-white border-b border-[#f1f5f9] sticky top-0 z-10">
         {/* Branding */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-[#00685f] flex items-center justify-center shadow-lg shadow-[#00685f]/20">
@@ -163,132 +140,148 @@ export default function WaitingRoomDisplay() {
           </div>
         </div>
 
-        {/* Live indicator + clock */}
+        {/* Right side: clock + connection badge */}
         <div className="flex items-center gap-4">
-          <span className="text-[14px] font-medium text-[#3d4947] tabular-nums">{currentTime}</span>
-          <div className="flex items-center gap-2 px-4 py-1.5 bg-[#e2e7ff] rounded-full border border-[#bcc9c6]/40">
-            <span
-              className="w-2 h-2 rounded-full bg-[#00685f] block transition-opacity duration-700"
-              style={{ opacity: isLive ? 1 : 0.3 }}
-            />
-            <span className="text-[12px] font-bold uppercase tracking-widest text-[#00685f]">
-              Live Synced
-            </span>
-          </div>
+          <span className="text-[14px] font-medium text-[#3d4947] tabular-nums hidden sm:block">
+            {now > 0 ? formatTime(now) : ''}
+          </span>
+          <LiveBadge status={connectionStatus} pulseTick={pulseTick} />
         </div>
       </header>
 
-      {/* ── Main content ───────────────────────────────────────────────── */}
+      {/* ── Main ────────────────────────────────────────────────────────── */}
       <main className="flex-1 w-full max-w-[900px] mx-auto px-6 py-10 flex flex-col gap-8">
+
+        {/* ── Error banner ──────────────────────────────────────────────── */}
+        {error && (
+          <div className="flex items-center gap-3 bg-[#ffdad6] border border-[#93000a]/20 text-[#93000a] px-5 py-3 rounded-2xl text-[13px] font-semibold">
+            <span className="material-symbols-outlined text-base">error</span>
+            <span>Unable to load queue data: {error}</span>
+          </div>
+        )}
 
         {/* ── NOW SERVING hero ──────────────────────────────────────────── */}
         <section
+          id="now-serving-card"
           className={`bg-white border-2 rounded-3xl flex flex-col items-center justify-center text-center py-14 px-8 shadow-xl shadow-black/[0.04] transition-all duration-500 ${
             justCalled
               ? 'border-[#00685f] scale-[1.01] shadow-[#00685f]/20 shadow-2xl'
               : 'border-[#e2e8f0]'
           }`}
         >
-          {/* Sub-label */}
           <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#6d7a77] mb-4">
             Now Serving
           </p>
 
-          {/* Mega token number */}
-          <div
-            className={`text-[clamp(5rem,20vw,10rem)] font-extrabold leading-none tracking-tighter transition-all duration-500 ${
-              justCalled ? 'text-[#008378] scale-105' : 'text-[#00685f]'
-            }`}
-          >
-            {serving ? `T-${serving.token_number}` : '---'}
-          </div>
+          {isLoading ? (
+            <>
+              <Skeleton className="h-[clamp(5rem,20vw,10rem)] w-64 mb-4" />
+              <Skeleton className="h-5 w-32" />
+            </>
+          ) : (
+            <>
+              {/* Token number — mega display */}
+              <div
+                id="current-serving-token"
+                className={`text-[clamp(5rem,20vw,10rem)] font-extrabold leading-none tracking-tighter transition-all duration-500 ${
+                  justCalled ? 'text-[#008378] scale-105' : 'text-[#00685f]'
+                }`}
+              >
+                {serving ? `T-${serving.token_number}` : '—'}
+              </div>
 
-          {/* Patient name + session elapsed */}
-          {serving && (
-            <div className="mt-4 flex flex-col items-center gap-2">
-              <p className="text-[18px] font-semibold text-[#3d4947]">{serving.patient_name}</p>
-              <span className="text-[13px] text-[#bcc9c6] italic">{sessionElapsedLabel}</span>
-            </div>
+              {/* Patient meta (name + elapsed) — privacy-safe: first name + initial only */}
+              {serving && (
+                <div className="mt-4 flex flex-col items-center gap-1.5">
+                  <p className="text-[16px] font-semibold text-[#3d4947]">
+                    {serving.patient_name}
+                  </p>
+                  <span className="text-[13px] text-[#bcc9c6] italic">
+                    {sessionElapsedLabel}
+                  </span>
+                </div>
+              )}
+
+              {!serving && !isLoading && (
+                <p className="text-[15px] text-[#bcc9c6] mt-4 italic">
+                  No patient currently in session
+                </p>
+              )}
+            </>
           )}
 
-          {/* Animated underline bar */}
+          {/* Animated accent bar */}
           <div className="mt-8 h-1 w-24 rounded-full bg-[#e2e8f0] overflow-hidden">
             <div
-              className="h-full bg-[#00685f] rounded-full animate-pulse"
-              style={{ width: serving ? '100%' : '0%', transition: 'width 1s ease' }}
+              className="h-full bg-[#00685f] rounded-full transition-all duration-700"
+              style={{ width: serving ? '100%' : '0%' }}
             />
           </div>
         </section>
 
-        {/* ── Middle row: Your Token + Estimated Wait ────────────────────── */}
+        {/* ── Middle row: Next Token + Estimated Wait ────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
-          {/* Your Token card */}
-          <div className="bg-white border-2 border-[#e2e8f0] rounded-3xl p-8 flex flex-col items-center text-center shadow-lg shadow-black/[0.03]">
-            <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-[#6d7a77] mb-1">Your Token</p>
+          {/* Next Token card */}
+          <div
+            id="next-token-card"
+            className="bg-white border-2 border-[#e2e8f0] rounded-3xl p-8 flex flex-col items-center text-center shadow-lg shadow-black/[0.03]"
+          >
+            <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-[#6d7a77] mb-3">
+              Next Token
+            </p>
 
-            {isViewerServing ? (
-              /* Viewer is currently being called */
+            {isLoading ? (
+              <>
+                <Skeleton className="h-14 w-36 mb-3" />
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-24" />
+              </>
+            ) : upcomingSlice.length > 0 ? (
               <div className="flex flex-col items-center gap-3">
-                <div className="text-[2.5rem] font-extrabold text-[#00685f] tracking-tighter leading-none">
-                  T-{VIEWER_TOKEN}
+                <div className="text-[2.5rem] font-extrabold text-[#00685f] tracking-tighter leading-none mb-1">
+                  T-{upcomingSlice[0].token_number}
                 </div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#00685f]/10 text-[#00685f] text-[13px] font-bold rounded-full border border-[#00685f]/20 animate-pulse">
-                  <span
-                    className="material-symbols-outlined text-[16px]"
-                    style={{ fontVariationSettings: "'FILL' 1" }}
-                  >
-                    campaign
-                  </span>
-                  It&apos;s your turn!
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#00685f]/10 text-[#00685f] text-[13px] font-bold rounded-full border border-[#00685f]/20">
+                  Next up for consultation
                 </span>
               </div>
-            ) : viewerPosition > 0 ? (
-              <>
-                <div className="text-[2.5rem] font-extrabold text-[#00685f] tracking-tighter leading-none mb-4">
-                  T-{VIEWER_TOKEN}
-                </div>
-
-                {/* Progress bar */}
-                <div className="w-full h-2 bg-[#e2e7ff] rounded-full overflow-hidden mb-2">
-                  <div
-                    className="h-full bg-[#00685f] rounded-full transition-all duration-700"
-                    style={{ width: `${progressPct}%` }}
-                  />
-                </div>
-
-                <p className="text-[15px] font-semibold text-[#131b2e]">
-                  {viewerPosition === 1
-                    ? 'You\'re next!'
-                    : `${viewerPosition - 1} Patient${viewerPosition - 1 > 1 ? 's' : ''} Ahead`}
-                </p>
-              </>
             ) : (
               <div className="flex flex-col items-center gap-2 py-2">
-                <div className="text-[2.5rem] font-extrabold text-[#bcc9c6] tracking-tighter leading-none">
-                  T-{VIEWER_TOKEN}
-                </div>
-                <p className="text-[13px] text-[#bcc9c6]">Token not found in queue</p>
+                <span className="text-[2rem] font-extrabold text-[#bcc9c6] tracking-tighter leading-none">
+                  —
+                </span>
+                <p className="text-[13px] text-[#bcc9c6]">No patients waiting</p>
               </div>
             )}
           </div>
 
           {/* Estimated Wait card */}
-          <div className="bg-[#0051d5] rounded-3xl p-8 flex flex-col items-center justify-center text-center shadow-xl shadow-[#0051d5]/25 text-white border-2 border-[#0051d5]">
-            <p className="text-[12px] font-bold uppercase tracking-[0.2em] opacity-80 mb-2">Estimated Wait</p>
+          <div
+            id="estimated-wait-card"
+            className="bg-[#0051d5] rounded-3xl p-8 flex flex-col items-center justify-center text-center shadow-xl shadow-[#0051d5]/25 text-white border-2 border-[#0051d5]"
+          >
+            <p className="text-[12px] font-bold uppercase tracking-[0.2em] opacity-80 mb-2">
+              Estimated Wait
+            </p>
 
-            {isViewerServing ? (
-              <div className="flex flex-col items-center gap-1">
-                <div className="text-[3.5rem] font-black leading-none tracking-tighter">Now</div>
-                <p className="text-[14px] font-semibold opacity-90 mt-1">Please proceed to the doctor</p>
-              </div>
-            ) : viewerPosition > 0 ? (
+            {isLoading ? (
+              <>
+                <Skeleton className="h-20 w-32 mb-3 bg-white/20" />
+                <Skeleton className="h-4 w-28 bg-white/20" />
+              </>
+            ) : upcomingSlice.length > 0 ? (
               <>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[4rem] font-black leading-none tracking-tighter">
-                    {estimatedWaitMins}
+                  <span
+                    id="estimated-wait-value"
+                    className="text-[4rem] font-black leading-none tracking-tighter tabular-nums"
+                  >
+                    {Math.round(sessionRemainingMins) <= 0 ? 'Now' : Math.round(sessionRemainingMins)}
                   </span>
-                  <span className="text-[1.5rem] font-bold opacity-90">min</span>
+                  {Math.round(sessionRemainingMins) > 0 && (
+                    <span className="text-[1.5rem] font-bold opacity-90">min</span>
+                  )}
                 </div>
                 <p className="text-[12px] opacity-70 italic mt-3">Updated real-time</p>
               </>
@@ -296,26 +289,30 @@ export default function WaitingRoomDisplay() {
               <div className="text-[2rem] font-bold opacity-60">—</div>
             )}
 
-            {/* Decorative bottom ring */}
             <div className="mt-6 w-12 h-1 bg-white/30 rounded-full" />
           </div>
         </div>
 
-        {/* ── Queue Sequence ─────────────────────────────────────────────── */}
-        <section className="bg-white border-2 border-dashed border-[#e2e8f0] rounded-3xl p-6 shadow-sm">
-          {/* Header */}
+        {/* ── Queue Sequence grid — Task 3.2 ────────────────────────────── */}
+        <section
+          id="queue-sequence"
+          className="bg-white border-2 border-dashed border-[#e2e8f0] rounded-3xl p-6 shadow-sm"
+        >
           <div className="flex items-center justify-between mb-5 px-1">
             <h2 className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#6d7a77]">
               Queue Sequence
             </h2>
             <span className="text-[12px] font-semibold text-[#bcc9c6] uppercase tracking-widest">
-              Upcoming
+              {waiting.length} Waiting
             </span>
           </div>
 
-          {/* Queue items */}
-          {waiting.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 gap-2 text-[#bcc9c6]">
+          {isLoading ? (
+            <div className="flex flex-col gap-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}
+            </div>
+          ) : waiting.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-2 text-[#bcc9c6]">
               <span className="material-symbols-outlined text-[40px]">check_circle</span>
               <p className="text-[14px] font-medium">No patients in queue</p>
             </div>
@@ -323,12 +320,17 @@ export default function WaitingRoomDisplay() {
             <div className="flex flex-col gap-3">
               {upcomingSlice.map((patient, idx) => {
                 const isNext = idx === 0;
-                const isViewer = patient.token_number === VIEWER_TOKEN;
+                const isViewer = patient.token_number === viewerToken;
+                // Per-token wait: remaining session time + (idx slots) × avg consult
+                const tokenWaitMins = now > 0
+                  ? computeTokenWait(idx, sessionRemainingMins, avgConsultMins)
+                  : null;
 
                 return (
                   <div
                     key={patient.id}
-                    className={`flex items-center justify-between rounded-2xl px-6 py-4 transition-all duration-200 ${
+                    id={`queue-row-${patient.token_number}`}
+                    className={`flex items-center justify-between rounded-2xl px-6 py-4 transition-all duration-300 ${
                       isNext
                         ? 'bg-[#f2f3ff] border-2 border-[#e2e7ff]'
                         : isViewer
@@ -336,8 +338,8 @@ export default function WaitingRoomDisplay() {
                         : 'bg-[#fafafa] border-2 border-[#f1f5f9]'
                     }`}
                   >
-                    {/* Token */}
-                    <div className="flex items-center gap-4">
+                    {/* Left: token number + "You" badge */}
+                    <div className="flex items-center gap-3">
                       <span
                         className={`text-[1.4rem] font-bold tracking-tight ${
                           isNext
@@ -356,23 +358,29 @@ export default function WaitingRoomDisplay() {
                       )}
                     </div>
 
-                    {/* Position label */}
-                    <span
-                      className={`text-[12px] font-bold uppercase tracking-widest ${
-                        isNext ? 'text-[#00685f]' : 'text-[#bcc9c6]'
-                      }`}
-                    >
-                      {positionLabel(idx + 1)}
-                    </span>
+                    {/* Right: estimated wait pill */}
+                    {tokenWaitMins !== null && (
+                      <div className={`flex flex-col items-end gap-0.5`}>
+                        <span
+                          className={`text-[13px] font-black tabular-nums ${
+                            isNext ? 'text-[#00685f]' : isViewer ? 'text-[#0051d5]' : 'text-[#3d4947]'
+                          }`}
+                        >
+                          {tokenWaitMins <= 0 ? 'Now' : `~${tokenWaitMins}m`}
+                        </span>
+                        <span className="text-[10px] font-medium text-[#bcc9c6] uppercase tracking-widest">
+                          est. wait
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
 
-              {/* Show remaining count if more than 3 */}
               {waiting.length > 3 && (
                 <div className="text-center py-3">
                   <span className="text-[12px] font-medium text-[#bcc9c6]">
-                    +{waiting.length - 3} more patients in queue
+                    +{waiting.length - 3} more patient{waiting.length - 3 > 1 ? 's' : ''} in queue
                   </span>
                 </div>
               )}
@@ -380,7 +388,7 @@ export default function WaitingRoomDisplay() {
           )}
         </section>
 
-        {/* ── Footer note ───────────────────────────────────────────────── */}
+        {/* ── Footer ────────────────────────────────────────────────────── */}
         <p className="text-center text-[12px] text-[#bcc9c6] pb-4">
           Please stay nearby. You will be called when it&apos;s your turn.
         </p>
