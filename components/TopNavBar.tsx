@@ -58,6 +58,17 @@ export default function TopNavBar({
         </div>
 
         <div className="flex items-center gap-[16px] relative" ref={dropdownRef}>
+          {/* Patient Display link */}
+          <a
+            href="/display"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[#00685f]/10 hover:bg-[#00685f]/20 text-[#00685f] rounded-full text-[12px] font-bold uppercase tracking-widest transition-colors border border-[#00685f]/20"
+            title="Open patient waiting room display"
+          >
+            <span className="material-symbols-outlined text-[15px]">monitor</span>
+            Patient Display
+          </a>
           {/* Notification Bell Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
