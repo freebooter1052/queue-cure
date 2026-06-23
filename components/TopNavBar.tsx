@@ -6,7 +6,6 @@ import type { QueueNotification } from '@/lib/types';
 interface TopNavBarProps {
   notifications: QueueNotification[];
   onMarkAllRead: () => void;
-  onClearAll: () => void;
   onDismissNotification: (id: string) => void;
 }
 
@@ -24,7 +23,6 @@ function formatRelativeTime(isoString: string): string {
 export default function TopNavBar({
   notifications,
   onMarkAllRead,
-  onClearAll,
   onDismissNotification,
 }: TopNavBarProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -40,6 +38,13 @@ export default function TopNavBar({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Mark all as read when dropdown opens
+  useEffect(() => {
+    if (isOpen) {
+      onMarkAllRead();
+    }
+  }, [isOpen, onMarkAllRead]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -87,24 +92,6 @@ export default function TopNavBar({
               {/* Dropdown Header */}
               <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-[#f2f3ff]/50">
                 <span className="text-[15px] font-bold text-[#131b2e]">Notifications</span>
-                <div className="flex gap-2">
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={onMarkAllRead}
-                      className="text-[11px] text-[#00685f] hover:underline cursor-pointer font-semibold"
-                    >
-                      Mark read
-                    </button>
-                  )}
-                  {notifications.length > 0 && (
-                    <button
-                      onClick={onClearAll}
-                      className="text-[11px] text-red-600 hover:underline cursor-pointer font-semibold"
-                    >
-                      Clear all
-                    </button>
-                  )}
-                </div>
               </div>
 
               {/* Dropdown Items List */}
