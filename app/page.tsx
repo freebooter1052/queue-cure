@@ -41,14 +41,9 @@ export default function Dashboard() {
     setNotifications((prev) => [newNotif, ...prev]);
   }, []);
 
-  const handleMarkAllRead = () => {
+  const handleMarkAllRead = useCallback(() => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
-
-  const handleClearAll = () => {
-    setNotifications([]);
-    alertedKeysRef.current.clear();
-  };
+  }, []);
 
   const handleDismissNotification = (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
@@ -191,7 +186,6 @@ export default function Dashboard() {
       <TopNavBar
         notifications={notifications}
         onMarkAllRead={handleMarkAllRead}
-        onClearAll={handleClearAll}
         onDismissNotification={handleDismissNotification}
       />
 
