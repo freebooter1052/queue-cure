@@ -9,7 +9,7 @@
 // ============================================================
 
 import React from 'react';
-import { useDisplayQueue, type ConnectionStatus } from '@/hooks/useDisplayQueue';
+import { useDisplayQueue } from '@/hooks/useDisplayQueue';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -39,40 +39,7 @@ function ordinalSuffix(n: number): string {
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
 }
 
-// ── Connection badge ──────────────────────────────────────────────────────────
 
-interface LiveBadgeProps {
-  status: ConnectionStatus;
-  pulseTick: boolean; // toggles every 3s for dot animation
-}
-
-function LiveBadge({ status, pulseTick }: LiveBadgeProps) {
-  const map: Record<ConnectionStatus, { label: string; dotColor: string; bg: string; text: string }> = {
-    connecting: { label: 'Connecting…', dotColor: '#6d7a77', bg: '#e2e8f0',  text: '#3d4947' },
-    live:       { label: 'Live Synced', dotColor: '#00685f', bg: '#e2e7ff',  text: '#00685f' },
-    stale:      { label: 'Reconnecting', dotColor: '#f59e0b', bg: '#fef3c7', text: '#b45309' },
-    error:      { label: 'Offline',      dotColor: '#ba1a1a', bg: '#ffdad6', text: '#93000a' },
-  };
-  const cfg = map[status];
-
-  return (
-    <div
-      className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-black/5"
-      style={{ background: cfg.bg }}
-    >
-      <span
-        className="w-2 h-2 rounded-full block transition-opacity duration-700"
-        style={{
-          background: cfg.dotColor,
-          opacity: status === 'live' ? (pulseTick ? 1 : 0.3) : 1,
-        }}
-      />
-      <span className="text-[12px] font-bold uppercase tracking-widest" style={{ color: cfg.text }}>
-        {cfg.label}
-      </span>
-    </div>
-  );
-}
 
 // ── Skeleton loader ───────────────────────────────────────────────────────────
 
@@ -98,15 +65,11 @@ export default function WaitingRoomDisplay() {
     sessionElapsedMins,
     sessionRemainingMins,
     progressPct,
-    connectionStatus,
     isLoading,
     error,
     now,
     justCalled,
   } = useDisplayQueue();
-
-  // Pulse tick for live indicator dot (toggles via now % 6000)
-  const pulseTick = Math.floor(now / 3_000) % 2 === 0;
 
   // First 3 upcoming waiting patients for the Queue Sequence grid
   const upcomingSlice = waiting.slice(0, 3);
@@ -140,12 +103,11 @@ export default function WaitingRoomDisplay() {
           </div>
         </div>
 
-        {/* Right side: clock + connection badge */}
+        {/* Right side: clock */}
         <div className="flex items-center gap-4">
           <span className="text-[14px] font-medium text-[#3d4947] tabular-nums hidden sm:block">
             {now > 0 ? formatTime(now) : ''}
           </span>
-          <LiveBadge status={connectionStatus} pulseTick={pulseTick} />
         </div>
       </header>
 
