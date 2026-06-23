@@ -74,8 +74,11 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    loadPatients();
-    loadSettings();
+    // Avoid synchronous setState by using an async IIFE or timeout
+    const init = async () => {
+      await Promise.all([loadPatients(), loadSettings()]);
+    };
+    init();
 
     // Subscribe to realtime queue changes
     const channel = subscribeToQueue(() => {
@@ -169,10 +172,12 @@ export default function Dashboard() {
   };
 
   const handleAvgConsultChange = async (newValue: number) => {
+    const previousValue = avgConsultTime;
     setAvgConsultTimeState(newValue); // Optimistic update
     try {
       await setAvgConsultTime(newValue);
     } catch (err) {
+      setAvgConsultTimeState(previousValue); // Rollback
       setGlobalError((err as Error).message);
     }
   };
@@ -213,6 +218,7 @@ export default function Dashboard() {
             onChange={handleAvgConsultChange}
             onCallNext={handleCallNext}
             currentPatientId={currentPatient?.id || null}
+            currentPatientCalledAt={currentPatient?.called_at || null}
             hasWaitingPatients={waitingPatients.length > 0}
           />
         </div>

@@ -95,33 +95,7 @@ export async function callNextPatient(currentServingId?: string): Promise<void> 
  * Marks them as 'completed' immediately and calls the next one.
  */
 export async function skipPatient(patientId: string): Promise<void> {
-  const now = new Date().toISOString();
-
-  const { error } = await supabase
-    .from('patients')
-    .update({ status: 'completed', completed_at: now })
-    .eq('id', patientId);
-
-  if (error) throw new Error(error.message);
-
-  // Serve the next waiting patient
-  const { data: nextPatients, error: fetchError } = await supabase
-    .from('patients')
-    .select('id')
-    .eq('status', 'waiting')
-    .order('token_number', { ascending: true })
-    .limit(1);
-
-  if (fetchError) throw new Error(fetchError.message);
-
-  if (nextPatients && nextPatients.length > 0) {
-    const { error: serveError } = await supabase
-      .from('patients')
-      .update({ status: 'serving', called_at: now })
-      .eq('id', nextPatients[0].id);
-
-    if (serveError) throw new Error(serveError.message);
-  }
+  return callNextPatient(patientId);
 }
 
 /**
@@ -130,7 +104,7 @@ export async function skipPatient(patientId: string): Promise<void> {
 export async function removePatient(patientId: string): Promise<void> {
   const { error } = await supabase
     .from('patients')
-    .update({ status: 'completed' })
+    .delete()
     .eq('id', patientId);
 
   if (error) throw new Error(error.message);

@@ -11,8 +11,20 @@ export default function QueueList({ patients, onRemovePatient }: QueueListProps)
   const [showAll, setShowAll] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
+  const [now, setNow] = useState<number | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setNow(Date.now()), 0);
+    const interval = setInterval(() => setNow(Date.now()), 60000);
+    return () => {
+        clearTimeout(timer);
+        clearInterval(interval);
+    };
+  }, []);
+
   const getWaitTime = (createdAt: string) => {
-    const diffMs = Date.now() - new Date(createdAt).getTime();
+    if (!now) return 0;
+    const diffMs = now - new Date(createdAt).getTime();
     return Math.floor(diffMs / 60000);
   };
 
