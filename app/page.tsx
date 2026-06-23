@@ -31,23 +31,37 @@ export default function Dashboard() {
       if (alertedKeysRef.current.has(key)) return;
       alertedKeysRef.current.add(key);
     }
+    const id = Math.random().toString(36).substring(2, 9);
     const newNotif: QueueNotification = {
-      id: Math.random().toString(36).substring(2, 9),
+      id,
       type,
       message,
       timestamp: new Date().toISOString(),
       read: false,
     };
     setNotifications((prev) => [newNotif, ...prev]);
+
+    // Auto-dismiss the notification after 10 seconds
+    setTimeout(() => {
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      if (key) {
+        // Option to allow alert to re-trigger later if it still violates rules
+        alertedKeysRef.current.delete(key);
+      }
+    }, 10000);
   }, []);
 
   const handleMarkAllRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setNotifications((prev) => {
+      const hasUnread = prev.some((n) => !n.read);
+      if (!hasUnread) return prev;
+      return prev.map((n) => ({ ...n, read: true }));
+    });
   }, []);
 
-  const handleDismissNotification = (id: string) => {
+  const handleDismissNotification = useCallback((id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
-  };
+  }, []);
 
   // ── Data Fetching ───────────────────────────────────────────
   const loadPatients = useCallback(async () => {
