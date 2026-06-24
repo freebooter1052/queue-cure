@@ -93,11 +93,56 @@ export async function callNextPatient(currentServingId?: string): Promise<void> 
 }
 
 /**
- * Skip the currently serving patient:
- * Marks them as 'completed' immediately and calls the next one.
+ * Fetch the most recently completed patient.
  */
-export async function skipPatient(patientId: string): Promise<void> {
-  return callNextPatient(patientId);
+export async function fetchLastCompletedPatient(): Promise<Patient | null> {
+  const { data, error } = await supabase
+    .from('patients')
+    .select('*')
+    .eq('status', 'completed')
+    .order('completed_at', { ascending: false })
+    .limit(1);
+
+  if (error) throw new Error(error.message);
+  return data && data.length > 0 ? (data[0] as Patient) : null;
+}
+
+/**
+ * Recall the previous patient (moves the current patient back to waiting,
+ * and sets the last completed patient back to serving).
+ */
+export async function callPreviousPatient(currentServingId?: string): Promise<void> {
+  const now = new Date().toISOString();
+
+  // 1. If there's a currently serving patient, move them back to 'waiting'
+  if (currentServingId) {
+    const { error: revertError } = await supabase
+      .from('patients')
+      .update({ status: 'waiting', called_at: null })
+      .eq('id', currentServingId);
+
+    if (revertError) throw new Error(revertError.message);
+  }
+
+  // 2. Find the most recently completed patient
+  const { data: prevPatients, error: fetchError } = await supabase
+    .from('patients')
+    .select('*')
+    .eq('status', 'completed')
+    .order('completed_at', { ascending: false })
+    .limit(1);
+
+  if (fetchError) throw new Error(fetchError.message);
+
+  // 3. Move the previous patient from 'completed' back to 'serving'
+  if (prevPatients && prevPatients.length > 0) {
+    const { error: serveError } = await supabase
+      .from('patients')
+      .update({ status: 'serving', called_at: now, completed_at: null })
+      .eq('id', prevPatients[0].id);
+
+    if (serveError) throw new Error(serveError.message);
+  }
 }
 
 /**
@@ -137,6 +182,18 @@ export async function setPatientEmergency(patientId: string, isEmergency: boolea
 
   if (error) throw new Error(error.message);
   return data as Patient;
+}
+
+/**
+ * Daily reset: deletes all patients created before the given ISO date
+ * and restarts token sequence from 1 if the queue is empty.
+ */
+export async function performDailyReset(targetDateIso: string): Promise<void> {
+  const { error } = await supabase.rpc('reset_queue_before_date', {
+    target_date: targetDateIso,
+  });
+
+  if (error) throw new Error(error.message);
 }
 
 // ── SETTINGS ─────────────────────────────────────────────────

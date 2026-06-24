@@ -13,11 +13,11 @@
 The main administrative interface allows clinic staff to register patients, flag emergency cases, configure the average consultation SLA, and view/manage the active queue.
 * **Live Notifications:** Alerts the receptionist if an active session overruns the set average consult time, or if a waiting patient exceeds their SLA threshold.
 * **Intake Form:** Fast patient registration with a single-click emergency switch.
-* **Orchestration Panel:** Controls to call the next patient, skip current sessions, or dismiss patients.
+* **Orchestration Panel:** Controls to call the next patient, recall previous patients, or dismiss patients.
 
 ![Reception Desk Portal](public/reception_desk.png)
 
-*The screenshot above showcases two registered patients. T-36 (Bob Jones) was flagged as an Emergency Priority Case, which automatically bumped him to the head of the waiting list.*
+*The screenshot above showcases the receptionist dashboard. Setting a patient as an Emergency Priority Case automatically bumps them to the head of the waiting list.*
 
 ---
 
@@ -25,6 +25,7 @@ The main administrative interface allows clinic staff to register patients, flag
 A sterile, high-contrast dashboard optimized for wall-mounted TV monitors in the waiting lounge.
 * **Real-Time Synchronized Clock:** Shows current time, updated locally.
 * **Hero Serving Indicator:** Large display of the current active token. Toggles to a flashing red border for emergency sessions or green scale shifts when a new token is called.
+* **Last Called Card:** Displays the token number of the recently completed patient session.
 * **Estimated Wait Time:** Aggregated remaining time of the current session, updated on a 1-second cadence.
 
 ![Waiting Room Display](public/waiting_room.png)

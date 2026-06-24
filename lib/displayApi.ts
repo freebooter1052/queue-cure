@@ -21,6 +21,7 @@ export interface QueueChangePayload {
 export interface DisplayQueueSnapshot {
   serving: Patient | null;    // patient currently with the doctor
   waiting: Patient[];         // patients still in the waiting room, ordered by token
+  previous: Patient | null;   // patient who was completed most recently
   avgConsultMins: number;     // average consultation time in minutes
 }
 
@@ -32,7 +33,7 @@ export interface DisplayQueueSnapshot {
  * configured average consultation duration.
  */
 export async function fetchDisplaySnapshot(): Promise<DisplayQueueSnapshot> {
-  const [patientsResult, settingsResult] = await Promise.all([
+  const [patientsResult, settingsResult, completedResult] = await Promise.all([
     supabase
       .from('patients')
       .select('*')
@@ -43,9 +44,16 @@ export async function fetchDisplaySnapshot(): Promise<DisplayQueueSnapshot> {
       .select('value')
       .eq('key', 'avg_consultation_time')
       .single(),
+    supabase
+      .from('patients')
+      .select('*')
+      .eq('status', 'completed')
+      .order('completed_at', { ascending: false })
+      .limit(1),
   ]);
 
   if (patientsResult.error) throw new Error(patientsResult.error.message);
+  if (completedResult.error) throw new Error(completedResult.error.message);
 
   const all = (patientsResult.data ?? []) as Patient[];
   const serving = all.find(p => p.status === 'serving') ?? null;
@@ -55,12 +63,16 @@ export async function fetchDisplaySnapshot(): Promise<DisplayQueueSnapshot> {
     return a.token_number - b.token_number;
   });
 
+  const previous = (completedResult.data && completedResult.data.length > 0)
+    ? (completedResult.data[0] as Patient)
+    : null;
+
   const avgConsultMins =
     settingsResult.error || !settingsResult.data
       ? 15                                         // safe default
       : parseInt(settingsResult.data.value, 10) || 15;
 
-  return { serving, waiting, avgConsultMins };
+  return { serving, waiting, previous, avgConsultMins };
 }
 
 // ── Realtime Subscription ────────────────────────────────────────────────────

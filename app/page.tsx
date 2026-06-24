@@ -9,17 +9,20 @@ import {
   fetchActivePatients,
   registerPatient,
   callNextPatient,
-  skipPatient,
+  fetchLastCompletedPatient,
+  callPreviousPatient,
   removePatient,
   getAvgConsultTime,
   setAvgConsultTime,
   subscribeToQueue,
   setPatientEmergency,
+  performDailyReset,
 } from '@/lib/queueApi';
 import type { Patient, QueueNotification } from '@/lib/types';
 
 export default function Dashboard() {
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [lastCompletedPatient, setLastCompletedPatient] = useState<Patient | null>(null);
   const [avgConsultTime, setAvgConsultTimeState] = useState<number>(15);
   const [isCallingNext, setIsCallingNext] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -69,6 +72,8 @@ export default function Dashboard() {
     try {
       const data = await fetchActivePatients();
       setPatients(data);
+      const lastCompleted = await fetchLastCompletedPatient();
+      setLastCompletedPatient(lastCompleted);
     } catch (err) {
       setGlobalError((err as Error).message);
     }
@@ -86,6 +91,13 @@ export default function Dashboard() {
   useEffect(() => {
     // Avoid synchronous setState by using an async IIFE or timeout
     const init = async () => {
+      try {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        await performDailyReset(todayStart.toISOString());
+      } catch (err) {
+        console.error('Failed to perform daily reset:', err);
+      }
       await Promise.all([loadPatients(), loadSettings()]);
     };
     init();
@@ -174,11 +186,14 @@ export default function Dashboard() {
     }
   };
 
-  const handleSkip = async (patientId: string) => {
+  const handlePrevious = async (currentServingId: string | null) => {
+    setIsCallingNext(true);
     try {
-      await skipPatient(patientId);
+      await callPreviousPatient(currentServingId || undefined);
     } catch (err) {
       setGlobalError((err as Error).message);
+    } finally {
+      setIsCallingNext(false);
     }
   };
 
@@ -251,8 +266,9 @@ export default function Dashboard() {
           <div className="lg:col-span-8 space-y-[24px]">
             <NowServing
               currentPatient={currentPatient}
+              lastCompletedPatient={lastCompletedPatient}
               onCallNext={handleCallNext}
-              onSkip={handleSkip}
+              onPrevious={handlePrevious}
               isLoading={isCallingNext}
             />
             <QueueList
