@@ -184,6 +184,18 @@ export async function setPatientEmergency(patientId: string, isEmergency: boolea
   return data as Patient;
 }
 
+/**
+ * Daily reset: deletes all patients created before the given ISO date
+ * and restarts token sequence from 1 if the queue is empty.
+ */
+export async function performDailyReset(targetDateIso: string): Promise<void> {
+  const { error } = await supabase.rpc('reset_queue_before_date', {
+    target_date: targetDateIso,
+  });
+
+  if (error) throw new Error(error.message);
+}
+
 // ── SETTINGS ─────────────────────────────────────────────────
 
 /**

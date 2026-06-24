@@ -16,6 +16,7 @@ import {
   setAvgConsultTime,
   subscribeToQueue,
   setPatientEmergency,
+  performDailyReset,
 } from '@/lib/queueApi';
 import type { Patient, QueueNotification } from '@/lib/types';
 
@@ -90,6 +91,13 @@ export default function Dashboard() {
   useEffect(() => {
     // Avoid synchronous setState by using an async IIFE or timeout
     const init = async () => {
+      try {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        await performDailyReset(todayStart.toISOString());
+      } catch (err) {
+        console.error('Failed to perform daily reset:', err);
+      }
       await Promise.all([loadPatients(), loadSettings()]);
     };
     init();
