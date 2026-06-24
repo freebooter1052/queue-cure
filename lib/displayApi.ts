@@ -49,7 +49,11 @@ export async function fetchDisplaySnapshot(): Promise<DisplayQueueSnapshot> {
 
   const all = (patientsResult.data ?? []) as Patient[];
   const serving = all.find(p => p.status === 'serving') ?? null;
-  const waiting = all.filter(p => p.status === 'waiting');
+  const waiting = all.filter(p => p.status === 'waiting').sort((a, b) => {
+    if (a.is_emergency && !b.is_emergency) return -1;
+    if (!a.is_emergency && b.is_emergency) return 1;
+    return a.token_number - b.token_number;
+  });
 
   const avgConsultMins =
     settingsResult.error || !settingsResult.data

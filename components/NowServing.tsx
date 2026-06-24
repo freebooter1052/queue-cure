@@ -44,27 +44,39 @@ export default function NowServing({ currentPatient, onCallNext, onSkip, isLoadi
 
       <div className="text-center relative z-10 w-full max-w-2xl">
         {/* Status badge */}
-        <div className="inline-flex items-center gap-[8px] px-[16px] py-1 bg-[#00685f]/10 text-[#00685f] rounded-full mb-[24px]">
+        <div className={`inline-flex items-center gap-[8px] px-[16px] py-1 rounded-full mb-[24px] ${
+          currentPatient?.is_emergency
+            ? 'bg-red-600 text-white animate-pulse'
+            : 'bg-[#00685f]/10 text-[#00685f]'
+        }`}>
           <span
             className={`material-symbols-outlined text-sm ${currentPatient ? 'animate-pulse' : ''}`}
             style={{ fontVariationSettings: "'FILL' 1" }}
           >
-            fiber_manual_record
+            {currentPatient?.is_emergency ? 'emergency' : 'fiber_manual_record'}
           </span>
-          <span className="text-[12px] uppercase tracking-widest font-bold leading-[16px]">Now Serving</span>
+          <span className="text-[12px] uppercase tracking-widest font-bold leading-[16px]">
+            {currentPatient?.is_emergency ? 'Emergency Session' : 'Now Serving'}
+          </span>
         </div>
 
         {/* Token + patient info */}
         <div className="mb-[36px]">
-          <span className="text-[120px] leading-none font-extrabold text-[#00685f] tracking-tighter block">
+          <span className={`text-[120px] leading-none font-extrabold tracking-tighter block ${
+            currentPatient?.is_emergency ? 'text-red-600' : 'text-[#00685f]'
+          }`}>
             {currentPatient ? `T-${currentPatient.token_number}` : '---'}
           </span>
 
           {currentPatient ? (
             <div className="mt-2 space-y-1">
-              <p className="text-[20px] font-semibold text-[#131b2e]">{currentPatient.patient_name}</p>
+              <p className={`text-[20px] font-semibold ${currentPatient.is_emergency ? 'text-red-900' : 'text-[#131b2e]'}`}>{currentPatient.patient_name}</p>
               <div className="flex items-center justify-center gap-3">
-                <span className="px-[16px] py-1 bg-[#00685f]/10 text-[#00685f] text-[14px] font-semibold leading-[20px] rounded-lg border border-[#00685f]/20 inline-block uppercase tracking-wide">
+                <span className={`px-[16px] py-1 text-[14px] font-semibold leading-[20px] rounded-lg border inline-block uppercase tracking-wide ${
+                  currentPatient.is_emergency
+                    ? 'bg-red-50 text-red-700 border-red-200'
+                    : 'bg-[#00685f]/10 text-[#00685f] border-[#00685f]/20'
+                }`}>
                   In Session
                 </span>
                 {elapsed && (

@@ -13,10 +13,10 @@ import type { Patient } from './types';
  * Register a new patient. Token number is assigned automatically
  * by the PostgreSQL trigger (trg_assign_token).
  */
-export async function registerPatient(patientName: string): Promise<Patient> {
+export async function registerPatient(patientName: string, isEmergency: boolean = false): Promise<Patient> {
   const { data, error } = await supabase
     .from('patients')
-    .insert({ patient_name: patientName, status: 'waiting' })
+    .insert({ patient_name: patientName, status: 'waiting', is_emergency: isEmergency })
     .select()
     .single();
 
@@ -34,6 +34,7 @@ export async function fetchActivePatients(): Promise<Patient[]> {
     .from('patients')
     .select('*')
     .in('status', ['waiting', 'serving'])
+    .order('is_emergency', { ascending: false })
     .order('token_number', { ascending: true });
 
   if (error) throw new Error(error.message);
@@ -70,11 +71,12 @@ export async function callNextPatient(currentServingId?: string): Promise<void> 
     if (completeError) throw new Error(completeError.message);
   }
 
-  // Find the next patient with the lowest token_number that is still waiting
+  // Find the next patient with the lowest token_number that is still waiting (emergencies first)
   const { data: nextPatients, error: fetchError } = await supabase
     .from('patients')
     .select('id')
     .eq('status', 'waiting')
+    .order('is_emergency', { ascending: false })
     .order('token_number', { ascending: true })
     .limit(1);
 
@@ -120,6 +122,21 @@ export async function clearCompletedPatients(): Promise<void> {
     .eq('status', 'completed');
 
   if (error) throw new Error(error.message);
+}
+
+/**
+ * Update emergency status of a patient.
+ */
+export async function setPatientEmergency(patientId: string, isEmergency: boolean): Promise<Patient> {
+  const { data, error } = await supabase
+    .from('patients')
+    .update({ is_emergency: isEmergency })
+    .eq('id', patientId)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data as Patient;
 }
 
 // ── SETTINGS ─────────────────────────────────────────────────

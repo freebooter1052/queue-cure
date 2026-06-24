@@ -133,13 +133,18 @@ export default function WaitingRoomDisplay() {
           <section
             id="now-serving-card"
             className={`flex-1 bg-white border-2 rounded-3xl flex flex-col items-center justify-center text-center py-10 lg:py-12 px-8 shadow-xl shadow-black/[0.04] transition-all duration-500 ${
-              justCalled
+              serving?.is_emergency
+                ? 'border-red-500 shadow-red-200/50 shadow-2xl bg-red-50/20'
+                : justCalled
                 ? 'border-[#00685f] scale-[1.01] shadow-[#00685f]/20 shadow-2xl'
                 : 'border-[#e2e8f0]'
             }`}
           >
-            <p className="text-[11px] lg:text-[13px] font-bold uppercase tracking-[0.3em] text-[#6d7a77] mb-2 lg:mb-4">
-              Now Serving
+            <p className={`text-[11px] lg:text-[13px] font-bold uppercase tracking-[0.3em] mb-2 lg:mb-4 flex items-center justify-center gap-1.5 ${
+              serving?.is_emergency ? 'text-red-600 animate-pulse' : 'text-[#6d7a77]'
+            }`}>
+              {serving?.is_emergency && <span className="material-symbols-outlined text-[16px]">emergency</span>}
+              {serving?.is_emergency ? 'Emergency Session' : 'Now Serving'}
             </p>
 
             {isLoading ? (
@@ -153,7 +158,9 @@ export default function WaitingRoomDisplay() {
                 <div
                   id="current-serving-token"
                   className={`text-[clamp(5rem,15vw,8rem)] font-extrabold leading-none tracking-tighter transition-all duration-500 ${
-                    justCalled ? 'text-[#008378] scale-105' : 'text-[#00685f]'
+                    serving?.is_emergency
+                      ? 'text-red-600 scale-102 animate-pulse'
+                      : justCalled ? 'text-[#008378] scale-105' : 'text-[#00685f]'
                   }`}
                 >
                   {serving ? `T-${serving.token_number}` : '—'}
@@ -162,10 +169,14 @@ export default function WaitingRoomDisplay() {
                 {/* Patient meta (name + elapsed) — privacy-safe */}
                 {serving && (
                   <div className="mt-2 lg:mt-4 flex flex-col items-center gap-1.5">
-                    <p className="text-[16px] lg:text-[20px] font-semibold text-[#3d4947]">
+                    <p className={`text-[16px] lg:text-[20px] font-semibold ${
+                      serving.is_emergency ? 'text-red-900' : 'text-[#3d4947]'
+                    }`}>
                       {serving.patient_name}
                     </p>
-                    <span className="text-[13px] lg:text-[15px] text-[#bcc9c6] italic">
+                    <span className={`text-[13px] lg:text-[15px] italic ${
+                      serving.is_emergency ? 'text-red-500' : 'text-[#bcc9c6]'
+                    }`}>
                       {sessionElapsedLabel}
                     </span>
                   </div>
@@ -182,7 +193,9 @@ export default function WaitingRoomDisplay() {
             {/* Animated accent bar */}
             <div className="mt-6 lg:mt-8 h-1 w-24 rounded-full bg-[#e2e8f0] overflow-hidden">
               <div
-                className="h-full bg-[#00685f] rounded-full transition-all duration-700"
+                className={`h-full rounded-full transition-all duration-700 ${
+                  serving?.is_emergency ? 'bg-red-600' : 'bg-[#00685f]'
+                }`}
                 style={{ width: serving ? '100%' : '0%' }}
               />
             </div>
@@ -207,12 +220,21 @@ export default function WaitingRoomDisplay() {
                 </>
               ) : nextPatient ? (
                 <div className="flex flex-col items-center gap-2">
-                  <div className="text-[2.2rem] lg:text-[2.8rem] font-extrabold text-[#00685f] tracking-tighter leading-none">
+                  <div className={`text-[2.2rem] lg:text-[2.8rem] font-extrabold tracking-tighter leading-none ${
+                    nextPatient.is_emergency ? 'text-red-600' : 'text-[#00685f]'
+                  }`}>
                     T-{nextPatient.token_number}
                   </div>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#00685f]/10 text-[#00685f] text-[11px] lg:text-[12px] font-bold rounded-full border border-[#00685f]/20">
-                    Next up for consultation
-                  </span>
+                  {nextPatient.is_emergency ? (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 text-[11px] lg:text-[12px] font-extrabold rounded-full border border-red-200 animate-pulse">
+                      <span className="material-symbols-outlined text-[12px] fill-current">emergency</span>
+                      EMERGENCY PRIORITY
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#00685f]/10 text-[#00685f] text-[11px] lg:text-[12px] font-bold rounded-full border border-[#00685f]/20">
+                      Next up for consultation
+                    </span>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-1 py-1">
@@ -307,7 +329,9 @@ export default function WaitingRoomDisplay() {
                       key={patient.id}
                       id={`queue-row-${patient.token_number}`}
                       className={`flex items-center justify-between rounded-2xl px-6 py-4 transition-all duration-300 shrink-0 ${
-                        isNext
+                        patient.is_emergency
+                          ? 'bg-red-50 border-2 border-red-200 animate-pulse'
+                          : isNext
                           ? 'bg-[#f2f3ff] border-2 border-[#e2e7ff]'
                           : isViewer
                           ? 'bg-[#dbe1ff]/40 border-2 border-[#b4c5ff]/60'
@@ -318,7 +342,9 @@ export default function WaitingRoomDisplay() {
                       <div className="flex items-center gap-3">
                         <span
                           className={`text-[1.4rem] font-bold tracking-tight ${
-                            isNext
+                            patient.is_emergency
+                              ? 'text-red-600'
+                              : isNext
                               ? 'text-[#131b2e]'
                               : isViewer
                               ? 'text-[#0051d5]'
@@ -327,6 +353,12 @@ export default function WaitingRoomDisplay() {
                         >
                           T-{patient.token_number}
                         </span>
+                        {patient.is_emergency && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 bg-red-600 text-white rounded-full">
+                            <span className="material-symbols-outlined text-[10px] fill-current">emergency</span>
+                            Emergency
+                          </span>
+                        )}
                         {isViewer && (
                           <span className="text-[11px] font-bold uppercase tracking-widest px-2 py-0.5 bg-[#0051d5]/10 text-[#0051d5] rounded-full border border-[#0051d5]/20">
                             You
@@ -339,7 +371,13 @@ export default function WaitingRoomDisplay() {
                         <div className="flex flex-col items-end gap-0.5">
                           <span
                             className={`text-[13px] font-black tabular-nums ${
-                              isNext ? 'text-[#00685f]' : isViewer ? 'text-[#0051d5]' : 'text-[#3d4947]'
+                              patient.is_emergency
+                                ? 'text-red-600'
+                                : isNext 
+                                ? 'text-[#00685f]' 
+                                : isViewer 
+                                ? 'text-[#0051d5]' 
+                                : 'text-[#3d4947]'
                             }`}
                           >
                             {tokenWaitMins <= 0 ? 'Now' : `~${tokenWaitMins}m`}

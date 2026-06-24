@@ -9,6 +9,7 @@ export interface Patient {
   patient_name: string;
   token_number: number;
   status: PatientStatus;
+  is_emergency: boolean;
   created_at: string;
   called_at: string | null;
   completed_at: string | null;
@@ -36,9 +37,11 @@ export interface Database {
         Insert: {
           patient_name: string;
           status?: PatientStatus;
+          is_emergency?: boolean;
         };
         Update: {
           status?: PatientStatus;
+          is_emergency?: boolean;
           called_at?: string | null;
           completed_at?: string | null;
         };

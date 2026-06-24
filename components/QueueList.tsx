@@ -5,6 +5,7 @@ import type { Patient } from '@/lib/types';
 interface QueueListProps {
   patients: Patient[];
   onRemovePatient: (patientId: string) => void;
+  onToggleEmergency: (patientId: string, currentVal: boolean) => void;
   /** Average consultation time in minutes (from settings) */
   avgConsultMins: number;
   /** called_at timestamp of the patient currently being served (null if nobody serving) */
@@ -37,6 +38,7 @@ function computeTokenEstWait(
 export default function QueueList({
   patients,
   onRemovePatient,
+  onToggleEmergency,
   avgConsultMins,
   servingCalledAt,
 }: QueueListProps) {
@@ -112,7 +114,9 @@ export default function QueueList({
                 <div
                   key={patient.id}
                   className={`flex items-center justify-between p-[16px] border-l-4 rounded-r-lg group transition-all ${
-                    isFirst
+                    patient.is_emergency
+                      ? 'border-red-500 bg-red-50/70 hover:bg-red-100/50'
+                      : isFirst
                       ? 'border-[#00685f] bg-[#faf8ff]'
                       : 'bg-white border-transparent hover:bg-[#eaedff]'
                   } ${isRemoving ? 'opacity-40 pointer-events-none' : ''}`}
@@ -122,19 +126,43 @@ export default function QueueList({
                     <span className="text-[12px] font-bold text-[#bcc9c6] w-4 text-center">
                       {index + 1}
                     </span>
-                    <span className={`text-[22px] font-bold leading-[28px] tracking-[-0.01em] w-14 ${isFirst ? 'text-[#00685f]' : 'text-[#3d4947]'}`}>
+                    <span className={`text-[22px] font-bold leading-[28px] tracking-[-0.01em] w-14 ${
+                      patient.is_emergency 
+                        ? 'text-red-600' 
+                        : isFirst 
+                        ? 'text-[#00685f]' 
+                        : 'text-[#3d4947]'
+                    }`}>
                       T-{patient.token_number}
                     </span>
-                    <p className="text-[16px] font-semibold text-[#131b2e]">{patient.patient_name}</p>
+                    <p className={`text-[16px] font-semibold ${patient.is_emergency ? 'text-red-900' : 'text-[#131b2e]'}`}>
+                      {patient.patient_name}
+                    </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    {/* Emergency toggle button */}
+                    <button
+                      onClick={() => onToggleEmergency(patient.id, patient.is_emergency)}
+                      title={patient.is_emergency ? "Remove emergency status" : "Mark as emergency priority"}
+                      className={`px-3 py-1 text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer select-none border rounded-full shrink-0 ${
+                        patient.is_emergency
+                          ? 'bg-red-600 text-white border-red-600 hover:bg-red-750 hover:border-red-750 animate-pulse'
+                          : 'bg-transparent text-slate-400 border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 md:opacity-0 group-hover:opacity-100 focus:opacity-100'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: patient.is_emergency ? "'FILL' 1" : "" }}>emergency</span>
+                      <span className="hidden sm:inline">{patient.is_emergency ? 'Emergency' : 'Mark Emergency'}</span>
+                    </button>
+
                     {/* Estimated wait badge */}
                     {estWaitMins !== null ? (
-                      <div className="flex flex-col items-end gap-0.5">
+                      <div className="flex flex-col items-end gap-0.5 min-w-[50px]">
                         <span
                           className={`text-[14px] font-black tabular-nums leading-tight ${
-                            isFirst
+                            patient.is_emergency
+                              ? 'text-red-600'
+                              : isFirst
                               ? 'text-[#00685f]'
                               : isUrgent
                               ? 'text-orange-500'

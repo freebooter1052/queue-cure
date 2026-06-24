@@ -2,11 +2,12 @@
 import React, { useState } from 'react';
 
 interface PatientRegistrationProps {
-  onRegister: (name: string) => Promise<number | null>;
+  onRegister: (name: string, isEmergency?: boolean) => Promise<number | null>;
 }
 
 export default function PatientRegistration({ onRegister }: PatientRegistrationProps) {
   const [name, setName] = useState('');
+  const [isEmergency, setIsEmergency] = useState(false);
   const [issuedToken, setIssuedToken] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,11 +19,12 @@ export default function PatientRegistration({ onRegister }: PatientRegistrationP
     setIsLoading(true);
     setError(null);
 
-    const token = await onRegister(name.trim());
+    const token = await onRegister(name.trim(), isEmergency);
 
     if (token !== null) {
       setIssuedToken(token);
       setName('');
+      setIsEmergency(false);
       // Auto-clear token display after 10 seconds
       setTimeout(() => setIssuedToken(null), 10000);
     } else {
@@ -52,6 +54,30 @@ export default function PatientRegistration({ onRegister }: PatientRegistrationP
             onChange={(e) => setName(e.target.value)}
             disabled={isLoading}
           />
+        </div>
+
+        {/* Emergency toggle */}
+        <div 
+          className={`flex items-center gap-[12px] p-[16px] border border-dashed rounded-lg select-none cursor-pointer transition-all ${
+            isEmergency 
+              ? 'bg-red-50 border-red-300 text-red-700' 
+              : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100/50'
+          }`}
+          onClick={() => setIsEmergency(!isEmergency)}
+        >
+          <input
+            type="checkbox"
+            id="is-emergency-checkbox"
+            checked={isEmergency}
+            onChange={(e) => setIsEmergency(e.target.checked)}
+            disabled={isLoading}
+            onClick={(e) => e.stopPropagation()} // Prevent double-trigger when clicking checkbox directly
+            className="w-5 h-5 accent-red-600 rounded cursor-pointer"
+          />
+          <label htmlFor="is-emergency-checkbox" className="flex items-center gap-1.5 text-[14px] font-bold cursor-pointer">
+            <span className="material-symbols-outlined text-[18px]">emergency</span>
+            <span>Emergency Priority Case</span>
+          </label>
         </div>
 
         {error && (

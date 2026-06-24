@@ -14,6 +14,7 @@ import {
   getAvgConsultTime,
   setAvgConsultTime,
   subscribeToQueue,
+  setPatientEmergency,
 } from '@/lib/queueApi';
 import type { Patient, QueueNotification } from '@/lib/types';
 
@@ -143,13 +144,21 @@ export default function Dashboard() {
 
   // ── Handlers ────────────────────────────────────────────────
 
-  const handleRegister = async (name: string): Promise<number | null> => {
+  const handleRegister = async (name: string, isEmergency?: boolean): Promise<number | null> => {
     try {
-      const patient = await registerPatient(name);
+      const patient = await registerPatient(name, isEmergency);
       return patient.token_number;
     } catch (err) {
       setGlobalError((err as Error).message);
       return null;
+    }
+  };
+
+  const handleToggleEmergency = async (patientId: string, currentVal: boolean) => {
+    try {
+      await setPatientEmergency(patientId, !currentVal);
+    } catch (err) {
+      setGlobalError((err as Error).message);
     }
   };
 
@@ -249,6 +258,7 @@ export default function Dashboard() {
             <QueueList
               patients={waitingPatients}
               onRemovePatient={handleRemove}
+              onToggleEmergency={handleToggleEmergency}
               avgConsultMins={avgConsultTime}
               servingCalledAt={currentPatient?.called_at ?? null}
             />

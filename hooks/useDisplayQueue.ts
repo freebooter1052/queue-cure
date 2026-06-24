@@ -119,6 +119,14 @@ function computeWaitTime(
 
 // ── Helper: apply a single realtime payload to the current patient list ───────
 
+function sortWaitingPatients(list: Patient[]): Patient[] {
+  return [...list].sort((a, b) => {
+    if (a.is_emergency && !b.is_emergency) return -1;
+    if (!a.is_emergency && b.is_emergency) return 1;
+    return a.token_number - b.token_number;
+  });
+}
+
 /**
  * Surgically merges a WebSocket event payload into the existing patients array
  * rather than triggering a full refetch for every row change.
@@ -137,7 +145,7 @@ function applyPatientPayload(
       if (patient.status !== 'waiting') return prev;
       // Avoid duplicates
       if (prev.some(p => p.id === patient.id)) return prev;
-      return [...prev, patient].sort((a, b) => a.token_number - b.token_number);
+      return sortWaitingPatients([...prev, patient]);
     }
 
     case 'UPDATE': {
@@ -147,10 +155,10 @@ function applyPatientPayload(
         // Patient is no longer waiting (serving or completed) — remove from waiting list
         return prev.filter(p => p.id !== updated.id);
       }
-      // Update in place, re-sort in case token_number changed (shouldn't, but safe)
-      return prev
-        .map(p => (p.id === updated.id ? { ...p, ...updated } : p))
-        .sort((a, b) => a.token_number - b.token_number);
+      // Update in place, re-sort
+      return sortWaitingPatients(
+        prev.map(p => (p.id === updated.id ? { ...p, ...updated } : p))
+      );
     }
 
     case 'DELETE': {
