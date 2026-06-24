@@ -97,15 +97,6 @@ export default function TopNavBar({
             )}
           </button>
 
-          {/* Profile Avatar */}
-          <div className="w-8 h-8 rounded-full bg-[#008378] flex items-center justify-center overflow-hidden ml-[8px] border border-[#bcc9c6]">
-            <img
-              className="w-full h-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjCkUsVHfz3_lbYPO_9-izJkZkTBZozjXGAtByx-dRV25w1car-LkpWsgNSgXbhj6s1mOTk8bUehyEz4jIqMdGic5af2Ms_OyCm-4MvwrePtFo8tk5m8ej8arfbrn6UYjHoTO8ekTaykHTuGA5pVCCX8rbMirRWU11Eblh7elH-gW1JAOzoFhYv31l2aIa8Oxs4lJRnvV2bVzurM9WKQFqW7ldU4OKtYkg8cxEzrUQtt4GbydBm9XFxzsayMELYl1WAzc-PVBcTQJu"
-              alt="Avatar"
-            />
-          </div>
-
           {/* Notifications Dropdown Panel */}
           {isOpen && (
             <div className="absolute right-0 top-12 w-80 bg-white border border-[#bcc9c6] rounded-2xl shadow-xl z-50 overflow-hidden flex flex-col transition-all">
