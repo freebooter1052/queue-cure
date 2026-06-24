@@ -184,7 +184,7 @@ export function useDisplayQueue(): DisplayQueueState {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
-  const [lastUpdatedAt, setLastUpdatedAt] = useState(Date.now());
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(() => Date.now());
   const [justCalled, setJustCalled] = useState(false);
 
   // ── Ticking clock (1s cadence drives wait-time re-renders)
@@ -205,15 +205,20 @@ export function useDisplayQueue(): DisplayQueueState {
     const t = params.get('token');
     if (t) {
       const parsed = parseInt(t, 10);
-      if (!isNaN(parsed)) setViewerToken(parsed);
+      if (!isNaN(parsed)) {
+        setTimeout(() => setViewerToken(parsed), 0);
+      }
     }
   }, []);
 
   // ── 1-second clock (client-only — also sets initial value)
   useEffect(() => {
-    setNow(Date.now());                                         // first real tick
+    const timeout = setTimeout(() => setNow(Date.now()), 0);
     const interval = setInterval(() => setNow(Date.now()), 1_000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
   }, []);
 
   // ── Mark connection as "stale" if no realtime event arrives within 60s
@@ -228,11 +233,11 @@ export function useDisplayQueue(): DisplayQueueState {
 
   const loadSnapshot = useCallback(async () => {
     try {
-      setError(null);
       const snapshot = await fetchDisplaySnapshot();
       setServing(snapshot.serving);
       setWaiting(snapshot.waiting);
       setAvgConsultMins(snapshot.avgConsultMins);
+      setError(null);
     } catch (err) {
       setError((err as Error).message);
       setConnectionStatus('error');
@@ -244,8 +249,12 @@ export function useDisplayQueue(): DisplayQueueState {
   // ── Task 3.1 — Supabase Realtime WebSocket subscription ─────────────────
 
   useEffect(() => {
-    // Initial fetch
-    loadSnapshot();
+    // Initial fetch (deferred to avoid synchronous setState inside effect body)
+    const loadTimeout = setTimeout(() => {
+      loadSnapshot();
+      setConnectionStatus('live');
+      resetStaleTimer();
+    }, 0);
 
     // Open dedicated display channel
     const channel = subscribeToDisplayQueue(
@@ -306,11 +315,9 @@ export function useDisplayQueue(): DisplayQueueState {
       }
     });
 
-    setConnectionStatus('live');
-    resetStaleTimer();
-
     return () => {
       channel.unsubscribe();
+      clearTimeout(loadTimeout);
       if (staleTimerRef.current) clearTimeout(staleTimerRef.current);
     };
   }, [loadSnapshot, resetStaleTimer]);
