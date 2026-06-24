@@ -51,9 +51,18 @@ export default function TopNavBar({
   return (
     <header className="bg-[#faf8ff] border-b border-[#bcc9c6] sticky top-0 z-50">
       <div className="flex justify-between items-center w-full px-[24px] max-w-[1440px] mx-auto h-16">
-        <div className="flex items-center gap-[16px]">
-          <div className="text-[24px] font-bold leading-[32px] tracking-[-0.01em] text-[#00685f]">
-            Reception Desk
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-[#00685f] flex items-center justify-center shadow-lg shadow-[#00685f]/20">
+            <span
+              className="material-symbols-outlined text-white text-[20px]"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              local_hospital
+            </span>
+          </div>
+          <div>
+            <p className="text-[15px] font-bold leading-tight text-[#131b2e] tracking-tight">CareQueue</p>
+            <p className="text-[11px] text-[#6d7a77] leading-tight">Reception Desk</p>
           </div>
         </div>
 
