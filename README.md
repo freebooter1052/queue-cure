@@ -1,5 +1,8 @@
 # 🏥 CareQueue — Real-Time Clinical Queue Management System
 
+🔗 **Live Production URL:** [queue-cure-liard.vercel.app](https://queue-cure-liard.vercel.app)  
+📺 **Live Patient Waiting Room:** [queue-cure-liard.vercel.app/display](https://queue-cure-liard.vercel.app/display)
+
 **CareQueue** (also known as `queue-cure`) is a modern, high-fidelity real-time clinical queue management system designed for healthcare environments. Built to reduce cognitive load in high-stress clinical settings, it provides receptionists with an intuitive desk dashboard to register and orchestrate patients, while giving patients a beautiful, distraction-free live waiting room TV layout with real-time wait-time tracking.
 
 ---
@@ -168,6 +171,13 @@ Run the local next server:
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) in your browser to access the Reception Desk. To open the Patient Waiting Room display, click the **Patient Display** button in the top navbar or navigate directly to [http://localhost:3000/display](http://localhost:3000/display).
+
+### 5. Production Deployment on Vercel
+To deploy this project to Vercel, ensure you configure the environment variables (`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`) in your Vercel Project Settings.
+
+The live production deployment is available at:
+* **Receptionist Dashboard:** [https://queue-cure-liard.vercel.app](https://queue-cure-liard.vercel.app)
+* **Patient Waiting Room:** [https://queue-cure-liard.vercel.app/display](https://queue-cure-liard.vercel.app/display)
 
 ---
 
