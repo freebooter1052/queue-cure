@@ -57,6 +57,7 @@ export default function WaitingRoomDisplay() {
   const {
     serving,
     waiting,
+    previous,
     avgConsultMins,
     viewerToken,
     sessionElapsedMins,
@@ -197,8 +198,41 @@ export default function WaitingRoomDisplay() {
             </div>
           </section>
 
-          {/* Sub-cards Row (Next Token + Estimated Wait) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 shrink-0 lg:h-[180px] xl:h-[220px]">
+          {/* Sub-cards Row (Last Called + Next Token + Estimated Wait) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 shrink-0 lg:h-[180px] xl:h-[220px]">
+            
+            {/* Last Called Card */}
+            <div
+              id="last-called-card"
+              className="bg-white border-2 border-[#e2e8f0] rounded-3xl p-6 lg:p-8 flex flex-col items-center justify-center text-center shadow-lg shadow-black/[0.03]"
+            >
+              <p className="text-[11px] lg:text-[12px] font-bold uppercase tracking-[0.2em] text-[#6d7a77] mb-2 lg:mb-3">
+                Last Called
+              </p>
+
+              {isLoading ? (
+                <>
+                  <Skeleton className="h-10 w-28 mb-2" />
+                  <Skeleton className="h-4 w-24" />
+                </>
+              ) : previous ? (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="text-[2.2rem] lg:text-[2.8rem] font-extrabold tracking-tighter leading-none text-[#6d7a77]">
+                    T-{previous.token_number}
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-[#6d7a77] text-[11px] lg:text-[12px] font-bold rounded-full border border-slate-200">
+                    Session completed
+                  </span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-1 py-1">
+                  <span className="text-[1.8rem] lg:text-[2.2rem] font-extrabold text-[#bcc9c6] tracking-tighter leading-none">
+                    —
+                  </span>
+                  <p className="text-[11px] lg:text-[12px] text-[#bcc9c6]">None today yet</p>
+                </div>
+              )}
+            </div>
             
             {/* Next Token Card */}
             <div

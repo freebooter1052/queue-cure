@@ -29,6 +29,7 @@ export interface DisplayQueueState {
   // Raw queue data
   serving: Patient | null;
   waiting: Patient[];
+  previous: Patient | null;
   avgConsultMins: number;
 
   // Task 3.2 — Metrics for the viewer's token
@@ -178,6 +179,7 @@ export function useDisplayQueue(): DisplayQueueState {
   // ── Queue state
   const [serving, setServing] = useState<Patient | null>(null);
   const [waiting, setWaiting] = useState<Patient[]>([]);
+  const [previous, setPrevious] = useState<Patient | null>(null);
   const [avgConsultMins, setAvgConsultMins] = useState(15);
 
   // ── UI meta state
@@ -236,6 +238,7 @@ export function useDisplayQueue(): DisplayQueueState {
       const snapshot = await fetchDisplaySnapshot();
       setServing(snapshot.serving);
       setWaiting(snapshot.waiting);
+      setPrevious(snapshot.previous);
       setAvgConsultMins(snapshot.avgConsultMins);
       setError(null);
     } catch (err) {
@@ -283,6 +286,41 @@ export function useDisplayQueue(): DisplayQueueState {
 
           if (newRow.status === 'completed' && prev?.id === newRow.id) {
             // The currently serving patient was completed
+            return null;
+          }
+
+          return prev;
+        });
+
+        setPrevious(prev => {
+          const newRow = payload.new as Patient | null;
+          const oldRow = payload.old as Partial<Patient> | null;
+
+          if (payload.eventType === 'DELETE') {
+            if (prev && oldRow?.id === prev.id) {
+              setTimeout(() => {
+                fetchDisplaySnapshot().then(snap => {
+                  setPrevious(snap.previous);
+                }).catch(() => {});
+              }, 0);
+              return null;
+            }
+            return prev;
+          }
+
+          if (!newRow) return prev;
+
+          if (newRow.status === 'completed') {
+            return newRow;
+          }
+
+          if (prev && newRow.id === prev.id) {
+            // Recall or change status back — refetch last completed
+            setTimeout(() => {
+              fetchDisplaySnapshot().then(snap => {
+                setPrevious(snap.previous);
+              }).catch(() => {});
+            }, 0);
             return null;
           }
 
@@ -367,6 +405,7 @@ export function useDisplayQueue(): DisplayQueueState {
   return {
     serving,
     waiting,
+    previous,
     avgConsultMins,
     viewerToken,
     viewerPosition,

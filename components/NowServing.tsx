@@ -4,8 +4,9 @@ import type { Patient } from '@/lib/types';
 
 interface NowServingProps {
   currentPatient: Patient | null;
+  lastCompletedPatient: Patient | null;
   onCallNext: () => void;
-  onSkip: (patientId: string) => void;
+  onPrevious: (patientId: string | null) => void;
   isLoading: boolean;
 }
 
@@ -17,7 +18,13 @@ function formatElapsed(calledAt: string | null): string {
   return `${mins}m in session`;
 }
 
-export default function NowServing({ currentPatient, onCallNext, onSkip, isLoading }: NowServingProps) {
+export default function NowServing({
+  currentPatient,
+  lastCompletedPatient,
+  onCallNext,
+  onPrevious,
+  isLoading,
+}: NowServingProps) {
   const [elapsed, setElapsed] = useState('');
 
   // Update elapsed time every minute
@@ -95,15 +102,15 @@ export default function NowServing({ currentPatient, onCallNext, onSkip, isLoadi
 
         {/* Action Buttons */}
         <div className="flex gap-4">
-          {/* Skip button — only show when someone is being served */}
-          {currentPatient && (
+          {/* Previous Patient button — show when there is an active session OR a completed patient is available to recall */}
+          {(currentPatient || lastCompletedPatient) && (
             <button
-              onClick={() => onSkip(currentPatient.id)}
+              onClick={() => onPrevious(currentPatient?.id || null)}
               disabled={isLoading}
               className="flex-1 h-40 bg-white border-2 border-[#e2e8f0] text-[#3d4947] rounded-2xl flex flex-col items-center justify-center gap-[12px] hover:border-[#00685f]/30 hover:bg-[#f2f3ff] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span className="material-symbols-outlined text-4xl">skip_next</span>
-              <span className="text-[18px] font-bold leading-[24px]">Skip Patient</span>
+              <span className="material-symbols-outlined text-4xl">skip_previous</span>
+              <span className="text-[18px] font-bold leading-[24px]">Previous Patient</span>
             </button>
           )}
 
