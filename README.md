@@ -15,7 +15,7 @@ The main administrative interface allows clinic staff to register patients, flag
 * **Intake Form:** Fast patient registration with a single-click emergency switch.
 * **Orchestration Panel:** Controls to call the next patient, skip current sessions, or dismiss patients.
 
-![Reception Desk Portal](file:///d:/simple%20projects/queue-cure/public/reception_desk.png)
+![Reception Desk Portal](public/reception_desk.png)
 
 *The screenshot above showcases two registered patients. T-36 (Bob Jones) was flagged as an Emergency Priority Case, which automatically bumped him to the head of the waiting list.*
 
@@ -27,7 +27,7 @@ A sterile, high-contrast dashboard optimized for wall-mounted TV monitors in the
 * **Hero Serving Indicator:** Large display of the current active token. Toggles to a flashing red border for emergency sessions or green scale shifts when a new token is called.
 * **Estimated Wait Time:** Aggregated remaining time of the current session, updated on a 1-second cadence.
 
-![Waiting Room Display](file:///d:/simple%20projects/queue-cure/public/waiting_room.png)
+![Waiting Room Display](public/waiting_room.png)
 
 ---
 
@@ -37,7 +37,7 @@ When patients scan their ticket QR code or visit their personal link, they see a
 * **Tailored Wait Time:** Calculated dynamically for their specific position in the queue.
 * **Dynamic Progress Bar:** Visual progress representation of their position relative to the entire active list.
 
-![Personalized Patient View](file:///d:/simple%20projects/queue-cure/public/waiting_room_personalized.png)
+![Personalized Patient View](public/waiting_room_personalized.png)
 
 ---
 
@@ -86,7 +86,7 @@ queue-cure/
 
 ## 🧮 Wait-Time Calculation Engine
 
-Estimating patient wait time is done entirely client-side inside the custom React hook [useDisplayQueue.ts](file:///d:/simple%20projects/queue-cure/hooks/useDisplayQueue.ts) on a 1-second ticking interval, preventing unnecessary database reads.
+Estimating patient wait time is done entirely client-side inside the custom React hook [useDisplayQueue.ts](hooks/useDisplayQueue.ts) on a 1-second ticking interval, preventing unnecessary database reads.
 
 ### The SLA Formula:
 For any given waiting patient at index $i$ (0-indexed in the waiting array):
@@ -103,7 +103,7 @@ Where:
 
 ## 🗄️ Database Architecture
 
-The backend database runs on PostgreSQL (via Supabase). The schema resides in [supabase_schema.sql](file:///d:/simple%20projects/queue-cure/supabase_schema.sql) and consists of:
+The backend database runs on PostgreSQL (via Supabase). The schema resides in [supabase_schema.sql](supabase_schema.sql) and consists of:
 
 ### 1. `patients` Table
 Stores records of patient sessions and emergency status.
@@ -149,7 +149,7 @@ Holds clinic configurations (e.g., `avg_consultation_time` in minutes) to persis
 ### 1. Database Setup
 1. Log in to your [Supabase Console](https://database.new).
 2. Create a new project.
-3. Open the **SQL Editor** in the dashboard and paste the entire script from [supabase_schema.sql](file:///d:/simple%20projects/queue-cure/supabase_schema.sql).
+3. Open the **SQL Editor** in the dashboard and paste the entire script from [supabase_schema.sql](supabase_schema.sql).
 4. Run the query. This sets up the tables, sequence trigger, Row Level Security policies, and Realtime Publications.
 
 ### 2. Local Environment Variables
@@ -182,7 +182,7 @@ The live production deployment is available at:
 ---
 
 ## 🎨 Styling Guidelines & Aesthetic Theme
-The project applies a specialized design system dubbed **Clinical Clarity** (configured in [design.md](file:///d:/simple%20projects/queue-cure/design.md)):
+The project applies a specialized design system dubbed **Clinical Clarity** (configured in [design.md](design.md)):
 * **Palette:**
   * `Primary` (#00685f / Medical Teal): Symbolizes health, safety, and active actions.
   * `Secondary` (#0051d5 / Clinical Blue): Highlights personalized info and secondary details.
